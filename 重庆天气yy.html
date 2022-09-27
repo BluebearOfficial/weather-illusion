@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>重庆天气yy模拟器</title>
+    <style>
+        body {
+            background-color: rgb(63, 137, 179);
+            background-image: url('https://i.postimg.cc/VkTVz8Wn/cqqx.jpg');
+            background-size: 100%;
+            background-attachment: fixed;
+            padding: 12;
+        }
+
+        .bigfont {
+            font-size: 40px;
+        }
+
+        .box {
+            width: 1000px;
+            margin: 0px auto;
+            background: lightskyblue;
+            opacity: 0.85;
+        }
+
+        .box2 {
+            width: 800px;
+            margin: 0px auto;
+            line-height: 2em;
+        }
+
+        .result {
+            line-height: 1.5;
+            font-size: 32px;
+        }
+
+        .btn {
+            width: 120px;
+            height: 40px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px;
+        }
+
+        .rtable {
+            font-size: 18px;
+        }
+
+        table {
+            border: 1px solid gray;
+            border-collapse: collapse;
+            /*合并单元格边框*/
+            width: 500px;
+            text-align: center;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid gray;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <div class="box2">
+            <br>
+            <h1 class="bigfont">重庆天气yy模拟器 v1.0</h1>
+            <b>Chongqing Weather Illusion Simulator by Bluebear</b><br>
+            <b>更新于20220927，气候资料数据截至1991~2020</b><br>
+            <b>————————————————————————</b>
+            <br>
+            <button class="btn" type="button" onclick="clearRecord();">清空显示</button>
+            <button class="btn" type="button" id="rset" onclick="changeRecord();">记录已开启</button>
+            <b>关闭yy记录可提高运行速度</b><br>
+            <button class="btn" type="button" onclick="wish(1);">yy1次</button>
+            <button class="btn" type="button" onclick="wish(10);">yy10次</button>
+            <button class="btn" type="button" onclick="wish(100);">yy100次</button>
+            <br>
+            <b>————————————————————————</b><br>
+            <b class="result" id="result">尚未进行yy</b>
+            <br>
+            <b>————————————————————————</b>
+            <h1>数据统计</h1>
+            <div>
+                <b>
+                    总yy次数：<b id="total">0</b><br>
+                    狂囍次数：<b id="t5">0</b>&nbsp; (<b id="t5p">0</b>%)<br>
+                    囍次数：<b id="t4">0</b>&nbsp; (<b id="t4p">0</b>%)<br>
+                    皮鸭次数：<b id="t3">0</b>&nbsp; (<b id="t3p">0</b>%)<br>
+                    <b>————————————————————————</b>
+                    <h1>yy记录</h1>
+                    <div id="record">
+                        <table class="rtable" id="rtable">
+                            <tr>
+                                <th>yy次数</th>
+                                <th>天气等级</th>
+                                <th>囍保底</th>
+                                <th>狂囍保底</th>
+                                <th>天气名称</th>
+                            </tr>
+                        </table>
+                    </div>
+                </b>
+            </div>
+            <br>
+
+        </div>
+    </div>
+
+    <script>
+        //Chongqing Weather Illusion Model
+        //重庆yy模型实现
+
+        //使用方法：
+        //调用“单次yy();”即可进行单次yy，返回值为[天气名，等级]
+        //调用“重置yy保底();”即可重置yy保底状态
+
+        //保底计数器
+        let 未出囍次数 = 0;
+        let 未出囍其他次数 = 0;
+        let 未出囍降水次数 = 0;
+        let 未出狂囍次数 = 0;
+        let 未出狂囍降水次数 = 0;
+        let 未出狂囍其他次数 = 0;
+        let 权重和上限 = 10000;
+
+        //天气内容
+        let 狂囍降水 =
+            ['大暴雨', '雨夹雪', '积雪1cm', '冰粒', '冰雹', '积雪0.5cm'];
+        let 狂囍其他 =
+            ['破0', '日均温3-', '8月破20', '寒潮', '瞬时9级风',
+                '沙坪坝相对湿度99%+', '沙坪坝气压1002+', '1月冷高压下大晴', '强辐射雾', '8月刷秋日'];
+        let 囍降水 =
+            ['暴雨50mm', '大雨40mm', '8月100mm', '短强1h20mm', '年水超南宁', '冬季中雨'];
+        let 囍其他 =
+            ['9月入秋', '破3', '瞬时6级风', '强冷空气', '沙坪坝气压997+', '沙坪坝相对湿度96+', '6月破20', '昼阴夜晴'];
+        let 皮鸭其他 =
+            ['10月入秋', '1月入冬', '4月入夏', '1月入春', '8月均温30+', '高温日45+',
+                '阴天', '昼晴夜阴', '华西秋雨', '伏旱天气', '刷气温40+'];
+
+        function 单次yy() {
+            let 结果;
+
+            //天气等级决定
+            //let 皮鸭天气权重 = 9430;
+            let 囍天气权重 = (未出囍次数 <= 7) ? 510 :
+                510 + 5100 * (未出囍次数 - 7);
+            let 狂囍天气权重 = (未出狂囍次数 <= 72) ? 60 :
+                60 + 600 * (未出狂囍次数 - 72);
+
+            //天气类型决定（平稳机制）
+            let 狂囍降水权重 = (未出狂囍降水次数 <= 145) ? 30 :
+                30 + 300 * (未出狂囍降水次数 - 145);
+            let 狂囍其他权重 = (未出狂囍其他次数 <= 145) ? 30 :
+                30 + 300 * (未出狂囍其他次数 - 145);
+            let 囍降水权重 = (未出囍降水次数 <= 16) ? 30 :
+                30 + 300 * (未出狂囍降水次数 - 16);
+            let 囍其他权重 = (未出囍其他次数 <= 16) ? 30 :
+                30 + 300 * (未出狂囍其他次数 - 16);
+
+            //生成随机数
+            let 等级随机数 = Math.random() * 权重和上限;
+            let 囍类型随机数 = Math.random() * ((囍降水权重 + 囍其他权重 >
+                权重和上限) ? 权重和上限 : 囍降水权重 + 囍其他权重);
+            let 狂囍类型随机数 = Math.random() * ((狂囍降水权重 + 狂囍其他权重 >
+                权重和上限) ? 权重和上限 : 狂囍降水权重 + 狂囍其他权重);
+
+            //抽出狂囍天气
+            if (等级随机数 < 狂囍天气权重) {
+                if (狂囍类型随机数 < ((狂囍降水权重 >= 狂囍其他权重) ? 狂囍降水权重 : 狂囍其他权重)) {
+                    结果 = [(狂囍降水权重 >= 狂囍其他权重) ? 盼(1) : 盼(2), 5];
+                }
+                else {
+                    结果 = [(狂囍降水权重 >= 狂囍其他权重) ? 盼(2) : 盼(1), 5];
+                }
+            }
+
+            //抽出囍天气
+            else if (等级随机数 - 狂囍天气权重 < 囍天气权重) {
+                if (囍类型随机数 < ((囍降水权重 >= 囍其他权重) ? 囍降水权重 : 囍其他权重)) {
+                    结果 = [(囍降水权重 >= 囍其他权重) ? 盼(3) : 盼(4), 4];
+                }
+                else {
+                    结果 = [(囍降水权重 >= 囍其他权重) ? 盼(4) : 盼(3), 4];
+                }
+            }
+
+            else {
+                结果 = [盼(5), 3];
+            }
+
+            return 结果;
+        }
+
+        function 盼(type) {
+            未出囍次数++;
+            未出囍降水次数++;
+            未出囍其他次数++;
+            未出狂囍次数++;
+            未出狂囍降水次数++;
+            未出狂囍其他次数++;
+            switch (type) {
+                case 1: {
+                    未出狂囍次数 = 0;
+                    未出狂囍降水次数 = 0;
+                    return 狂囍降水[Number(parseInt(Math.random() * 狂囍降水.length))];
+                }
+                case 2: {
+                    未出狂囍次数 = 0;
+                    未出狂囍其他次数 = 0;
+                    return 狂囍其他[Number(parseInt(Math.random() * 狂囍其他.length))];
+                }
+                case 3: {
+                    未出囍次数 = 0;
+                    未出囍降水次数 = 0;
+                    return 囍降水[Number(parseInt(Math.random() * 囍降水.length))];
+                }
+                case 4: {
+                    未出囍次数 = 0;
+                    未出囍其他次数 = 0;
+                    return 囍其他[Number(parseInt(Math.random() * 囍其他.length))];
+                }
+                case 5: {
+                    return 皮鸭其他[Number(parseInt(Math.random() * 皮鸭其他.length))];
+                }
+            }
+        }
+
+        function 重置yy保底() {
+            未出囍次数 = 0;
+            未出囍其他次数 = 0;
+            未出囍降水次数 = 0;
+            未出狂囍次数 = 0;
+            未出狂囍降水次数 = 0;
+            未出狂囍其他次数 = 0;
+        }
+
+        //yy次数及各等级天气统计
+        let total = 0;
+        let t = [0, 0, 0];
+
+        //是否显示记录
+        let recordOn = true;
+
+        //执行n次yy
+        function wish(n) {
+            //清空结果显示区
+            document.getElementById('result').innerHTML = '';
+
+            for (let i = 0; i < n; i++) {
+                let item = 单次yy();
+                let color, star;
+                total++;
+                t[item[1] - 3]++;
+                switch (item[1]) {
+                    case 5: color = 'darkgoldenrod'; star = '（狂囍）'; break;
+                    case 4: color = 'purple'; star = '（囍）'; break;
+                    default: color = 'black'; star = '';
+                }
+
+                //在100次yy中，每隔10次画条分隔线
+                if (i != 0 && i % 10 == 0) {
+                    document.getElementById('result').innerHTML +=
+                        '——————————<br>';
+                }
+
+                //生成yy结果
+                document.getElementById('result').innerHTML +=
+                    '<b style="color:' + color + '">' + item[0] + star + '</b><br>';
+
+                //记录yy结果
+                if (recordOn) {
+                    document.getElementById('rtable').innerHTML +=
+                        '<tr style="color:' + color + '"><td> ' + total + '</td><td>' + item[1] + '</td><td>' + 未出囍次数 + '</td><td>' + 未出狂囍次数 + '</td><td>' + item[0] + star + '</td></tr>';
+                }
+
+                //更新统计数据
+                document.getElementById('total').innerHTML = total;
+                document.getElementById('t5').innerHTML = t[2];
+                document.getElementById('t4').innerHTML = t[1];
+                document.getElementById('t3').innerHTML = t[0];
+                document.getElementById('t5p').innerHTML = (t[2] / total * 100).toFixed(2);
+                document.getElementById('t4p').innerHTML = (t[1] / total * 100).toFixed(2);
+                document.getElementById('t3p').innerHTML = (t[0] / total * 100).toFixed(2);
+            }
+        }
+
+        //清空显示
+        function clearRecord() {
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('rtable').innerHTML =
+                `
+                            <tr>
+                                <th>yy次数</th>
+                                <th>天气等级</th>
+                                <th>囍保底</th>
+                                <th>狂囍保底</th>
+                                <th>天气名称</th>
+                            </tr>
+                `
+        }
+
+        function changeRecord() {
+            recordOn = !recordOn;
+            rtext = recordOn ? '记录已开启' : '记录已关闭';
+            document.getElementById('rset').innerHTML = rtext;
+        }
+    </script>
+</body>
+
+</html>
